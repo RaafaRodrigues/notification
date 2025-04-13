@@ -1,0 +1,89 @@
+version: "3.7"
+
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    hostname: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_SERVER_ID=1
+      - ZOOKEEPER_SERVERS=zoo1:2888:3888
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - kafka_network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    user: root
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=zoo1:2181
+      - KAFKA_ADVERTISED_LISTENER=PLAINTEXT://kafka:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL=PLAINTEXT
+      - KAFKA_LISTENER_PORT=9093
+      - KAFKA_LISTENER_NAME=PLAINTEXT
+      - KAFKA_BROKER_ID=1
+      - KAFKA_LOG_RETENTION_HOURS=168
+      - KAFKA_NUM_PARTITIONS=1
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_LOG_DIRS=/kafka/data
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CLUSTER_ID=123
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,PLAINTEXT_HOST://kafka:9093
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+
+    volumes:
+      - kafka-data:/kafka/data
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka_network
+
+  akhq:
+    image: tchiotludo/akhq
+    ports:
+      - "8080:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          server:
+            servlet:
+              context-path: /
+          connections:
+            "Local Kafka":
+              properties:
+                bootstrap.servers: "kafka:9093"
+    depends_on:
+      - kafka
+    networks:
+      - kafka_network
+
+  notification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notification-app
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+    depends_on:
+      - kafka
+    networks:
+      - kafka_network
+
+
+volumes:
+  kafka-data:
+    driver: local
+
+networks:
+  kafka_network:
+    driver: bridge
