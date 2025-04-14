@@ -87,7 +87,7 @@ Isso iniciará a aplicação em segundo plano na porta 8081.
   > "Infelizmente seu acordo foi cancelado devido à ausência de pagamento. Seu nome poderá ser negativado novamente."
 
 ### System design como um todo
-![img.png](img.png)
+![img_1.png](img.png)
 
 ---
 ## Ferramentas usadas para auxilio de qualidade e codigo
